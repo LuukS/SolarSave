@@ -111,6 +111,7 @@ def saveDailyData(statsfilename,filename,strDate):
 		outputFile.close()
 	else:
 		# Gaat dit nog snel bij 144 of 1440 records (dit is het aantal records bij metingen per 5 cq 1 minuut)?
+		blnDaggevonden = False
 		with open(filename, "r") as f:
 			oldlines = f.readlines()
 			f.close()
@@ -119,9 +120,12 @@ def saveDailyData(statsfilename,filename,strDate):
 				print line
 				if strDate == line.split(',')[0]:
 					print "aanpassen"
+					blnDaggevonden = True
 					f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 				else:
 					f.write(line)
+			if blnDaggevonden == False:
+				f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 			f.close()
 		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 
@@ -172,21 +176,23 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 		outputFile.close()
 	else:
 		# Kijk in het bestaande bestand of de weekgegevens al bestaan, zo niet dan toevoegen, indien wel dan aanpassen
-		blnAanpassen = false
-		WeekRecord = collections.namedtuple('WeekRecord', 'jaar,week,totaal,gem_temp,gem_pv_out')
+		with open(filename, "r") as f:
+			oldlines = f.readlines()
+			f.close()
+		
 		i = 0
-		for rec in map(WeekRecord._make, csv.reader(open(filename,"r"), delimiter=',')):
-			i = i + 1
-			if i > 1 and int(rec.jaar) == intJaar and int(rec.week) == intWeeknummer:
-				print "Aanpassen"
-				blnAanpassen = true
-				#rec.totaal = totaal
-				#rec.gem_temp = gem_temp
-				#rec.gem_pv_out = gem_pv_out
-		if blnAanpassen = false:
-			outputFile = open(filename, 'a')
-			outputFile.write(str(strftime("%Y", tmeDateForFileName)) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
-			outputFile.close()
+		blnWeekgevonden = False
+		with open(filename, "w") as f:
+			for line in oldlines:
+				i = i + 1
+				if i > 1 and intJaar == int(line.split(',')[0]) and intWeeknummer == int(line.split(',')[1]):
+					f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+					blnWeekgevonden = True
+				else:
+					f.write(line)
+			if blnWeekgevonden == False:
+				f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')				
+			f.close()
 
 def saveMonthlyData(weeklyfilename,filename,strDate):
 	"""
