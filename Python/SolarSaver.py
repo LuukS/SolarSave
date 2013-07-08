@@ -69,45 +69,27 @@ def saveDailyData(statsfilename,filename,strDate):
 	Open de daggegevens en controleer of er niet al een record bestaat voor de datum,
 	indien niet dan toevoegen, indien wel dan de gegevens aanpassen.
 	"""
+	strPeriod = "daily"
 	StatsRecord = collections.namedtuple('StatsRecord', 'timestamp, datetime, totaal, temp, pv_out, fout')
 	DagRecord = collections.namedtuple('StatsRecord', 'datum, totaal, gem_temp, gem_pv_out')
-	begintotaal = 0
 	totaal = 0
 	gem_temp = 0
 	gem_pv_out = 0
-	i = 0
-	j = 0
-	
-	blnFileExists = False
-	if os.path.exists(statsfilename):
-		blnFileExists = True
-	
-	for loc in map(StatsRecord._make, csv.reader(open(statsfilename,"r"), delimiter=',')):
-		i = i + 1
-		if i == 2:
-			begintotaal = int(totaal)
-			gem_temp = gem_temp + int(loc.temp)
-			gem_pv_out = gem_pv_out + int(loc.pv_out)
-			j = j + 1
-		elif  i > 2:
-			totaal = int(totaal) + int(loc.totaal)
-			gem_temp = gem_temp + int(loc.temp)
-			gem_pv_out = gem_pv_out + int(loc.pv_out)
-			j = j + 1
-		
-	totaal = int(totaal) - int(begintotaal)
-	print gem_temp
-	print j
-	gem_temp = gem_temp/j-1
-	gem_pv_out = gem_pv_out/j-1
+	totaal_pv_out = 0
+
+	sommatie = sommeerDailyData(statsfilename,[strDate],strPeriod)
+	totaal = sommatie[0]
+	gem_temp = sommatie [1]
+	gem_pv_out = sommatie [2]
+	totaal_pv_out = sommatie [3]
 	blnFileExists = False
 	if os.path.exists(filename):
 		blnFileExists = True
 	
 	if blnFileExists == False:
 		outputFile = open(filename, 'a')
-		outputFile.write('datum, totaal, gem_temp, gem_pv_out\n')
-		outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+		outputFile.write('datum, totaal, gem_temp, gem_pv_out,totaal_pv_out\n')
+		outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		outputFile.close()
 	else:
 		# Gaat dit nog snel bij 144 of 1440 records (dit is het aantal records bij metingen per 5 cq 1 minuut)?
@@ -121,11 +103,11 @@ def saveDailyData(statsfilename,filename,strDate):
 				if strDate == line.split(',')[0]:
 					print "aanpassen"
 					blnDaggevonden = True
-					f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+					f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 				else:
 					f.write(line)
 			if blnDaggevonden == False:
-				f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+				f.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 			f.close()
 		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 
@@ -142,6 +124,7 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 	Tevens moet op basis van de datum bepaald worden welke week het is en welke andere
 	dagen behoren tot deze week waarbij een week begint op maandag.
 	"""
+	strPeriod = "weekly"
 	intWeeknummer = getWeekNummer(strDate)
 	intJaar = getJaar(strDate)
 	daysInWeek = getDaysInWeek(strDate)
@@ -156,6 +139,7 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 	totaal = 0
 	gem_temp = 0
 	gem_pv_out = 0
+	totaal_pv_out = 0
 	sommatie = []
 	for intDate in daysInWeek:
 		print "Datum: " + intDate
@@ -163,15 +147,18 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 		strMaand = time.strftime("%m", time.strptime(str(intDate), '%Y%m%d'))
 		strDag = time.strftime("%d", time.strptime(str(intDate), '%Y%m%d'))		
 		strBestand = strInputDirectory +'/' + strJaar + strMaand + strDag + '_stats_' + strIdentifier + '.csv'
-		sommatie = sommeerDailyData(strBestand)
-		totaal = totaal + sommatie[0]
-		gem_temp = gem_temp + sommatie [1]
-		gem_pv_out = gem_pv_out + sommatie [2]
+		sommatie = sommeerDailyData(dailyfilename,daysInWeek,strPeriod)
+		# sommeer de gegevens niet uit de losse stats bestanden maar uit de daggegevens, deze worden namelijk al geupdate met de losse stats gegevens
+		# de for intDate hoeft dan niet meer, de data zitten in de array welke meegegeven wordt.
+		totaal = sommatie[0]
+		gem_temp = sommatie [1]
+		gem_pv_out = sommatie [2]
+		totaal_pv_out = sommatie [3]
 
 	if blnFileExists == False:
 		outputFile = open(filename, 'a')
-		outputFile.write('jaar,week,totaal,gem_temp,gem_pv_out\n')
-		outputFile.write(str(strftime("%Y", tmeDateForFileName)) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+		outputFile.write('jaar,week,totaal,gem_temp,gem_pv_out,totaal_pv_out\n')
+		outputFile.write(str(strftime("%Y", tmeDateForFileName)) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 		outputFile.close()
 	else:
@@ -186,40 +173,52 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 			for line in oldlines:
 				i = i + 1
 				if i > 1 and intJaar == int(line.split(',')[0]) and intWeeknummer == int(line.split(',')[1]):
-					f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+					f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 					blnWeekgevonden = True
 				else:
 					f.write(line)
 			if blnWeekgevonden == False:
-				f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')				
+				f.write(str(intJaar) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 			f.close()
 
-def saveMonthlyData(weeklyfilename,filename,strDate):
+def saveMonthlyData(monthlyfilename,filename,strDate):
 	"""
 	Sla de maandgegevens op in het bestand maandgegevens_identifier.csv
 	Bepaal hiervoor de totalen van de maand totnutoe uit de dag gegevens
 	De volgende gegevens moeten berekend worden:
 	jaar,maand,totaal,gem_temp,gem_pv_out
-	Doorloop hiervoor de dag files van de opgegeven maand en bereken de gegevens voor
-	deze maand.
+	Doorloop hiervoor de gegevens in het bestand daggegevens_identifier.csv.
 	Open de maandgegevens en controleer of er niet al een record bestaat voor de maand,
 	indien niet dan toevoegen, indien wel dan de gegevens aanpassen.
 	Tevens moet op basis van de datum bepaald worden welke maand het is en welke dagen
 	behoren tot deze maand (28, 29 30 of 31 dagen).
 	"""
-	print "Dagen in de maand: %i" % (getDaysInMonth(strDate))
+	strPeriod = "monthly"
+	intMaandnummer = getMaandNummer(strDate)
+	intJaar = getJaar(strDate)
+	strBestand = ""
+	totaal = 0
+	gem_temp = 0
+	gem_pv_out = 0
+	totaal_pv_out = 0
+	sommatie = []
+
+	arrDaysInMonth = getDaysInMonth(strDate)
+	sommatie = sommeerDailyData(monthlyfilename,arrDaysInMonth,strPeriod)
+	print "Sommatie: " + str(sommatie)
 	blnFileExists = False
 	if os.path.exists(filename):
 		blnFileExists = True
 
 	if blnFileExists == False:
 		outputFile = open(filename, 'a')
-		outputFile.write('jaar,maand,totaal,gem_temp,gem_pv_out\n')
+		outputFile.write('jaar,maand,totaal,gem_temp,gem_pv_out,totaal_pv_out\n')
+		outputFile.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 		outputFile.close()
 	else:
 		outputFile = open(filename, 'a')
-		outputFile.write('test\n')
+		outputFile.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		outputFile.close()
 
 def saveYearlyData(monthlyfilename,filename,strDate):
@@ -255,6 +254,13 @@ def getWeekNummer(strDate):
 	intWeeknummer = int(time.strftime("%W", time.strptime(strDate, '%Y%m%d')))
 	return intWeeknummer
 
+def getMaandNummer(strDate):
+	"""
+	Bepaal het nummer van de maand op basis van de (als string) doorgegeven datum
+	"""
+	intMaandnummer = int(time.strftime("%m", time.strptime(strDate, '%Y%m%d')))
+	return intMaandnummer
+
 def getJaar(strDate):
 	"""
 	Bepaal het nummer van de week op basis van de (als string) doorgegeven datum
@@ -281,10 +287,10 @@ def getDaysInWeek(strDate):
 			arrDaysInWeek.append("%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).year,
 			(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).month,
 			(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).day))
-			print "%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).year,
-			(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).month,
-			(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).day)
-			print "%i Dagen voor %s" % (i,strDate)
+			#print "%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).year,
+			#(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).month,
+			#(datetime.datetime(intJaar,intMaand,intDag) - datetime.timedelta(days=i)).day)
+			#print "%i Dagen voor %s" % (i,strDate)
 			i = i - 1
 		else:
 			i = intWeekday + 1
@@ -295,22 +301,29 @@ def getDaysInWeek(strDate):
 		arrDaysInWeek.append("%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).year,
 		(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).month,
 		(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).day))
-		print "%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).year,
-		(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).month,
-		(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).day)
-		print "%i Dagen na %s" % (i - intWeekday,strDate)
+		#print "%s%s%s" % ((datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).year,
+		#(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).month,
+		#(datetime.datetime(intJaar,intMaand,intDag) + datetime.timedelta(days=i - intWeekday)).day)
+		#print "%i Dagen na %s" % (i - intWeekday,strDate)
 		i = i - 1
 
 	arrDaysInWeek.sort()
-	print arrDaysInWeek
+	#print arrDaysInWeek
 	return arrDaysInWeek
 
 def getDaysInMonth(strDate):
 	"""
 	Bepaal hoeveel dagen in de maand zitten op basis van de (als string doorgegeven) datum
 	"""
-	intMaand = int(time.strftime("%m", time.strptime(strDate, '%Y%m%d')))
+	strJaar = time.strftime("%Y", time.strptime(strDate, '%Y%m%d'))
+	strMaand = time.strftime("%m", time.strptime(strDate, '%Y%m%d'))
+	strDag = time.strftime("%d", time.strptime(strDate, '%Y%m%d'))
+	intJaar = int(strJaar)
+	intMaand = int(strMaand)
+	intDag = int(strDag)
 	intDaysInMonth = 0
+	arrDagenInMaand = []
+	i = 1
 	if intMaand == 1:
 		intDaysInMonth = 31
 	elif intMaand == 2:
@@ -339,7 +352,12 @@ def getDaysInMonth(strDate):
 		intDaysInMonth = 30
 	elif intMaand == 12:
 		intDaysInMonth = 31
-	return intDaysInMonth
+
+	while i <= intDag and i <= intDaysInMonth:
+		arrDagenInMaand.append(strJaar + strMaand + time.strftime("%d", time.strptime(strJaar + strMaand + str(i), '%Y%m%d')))
+		i = i + 1
+		
+	return arrDagenInMaand
 
 def isSchrikkeljaar(strDate):
 	"""
@@ -355,14 +373,13 @@ def isSchrikkeljaar(strDate):
 	else:
 		return False
 
-def sommeerDailyData(statsfilename):
+def sommeerStatsData(statsfilename):
 	"""
 	Sommeer de daggegevens uit het bestand yyyyMMdd_stats_identifier.csv
 	De volgende gegevens moeten berekend en teruggegeven worden:
 	totaal,gem_temp,gem_pv_out
 	"""
 	StatsRecord = collections.namedtuple('StatsRecord', 'timestamp, datetime, totaal, temp, pv_out, fout')
-	WeekRecord = collections.namedtuple('WeekRecord', 'totaal, gem_temp, gem_pv_out')
 	begintotaal = 0
 	totaal = 0
 	gem_temp = 0
@@ -390,6 +407,56 @@ def sommeerDailyData(statsfilename):
 		print 'Gemiddelde temperatuur: %i' % (gem_temp)
 		print 'Gemiddelde output: %i' % (gem_pv_out)
 	return [totaal,gem_temp,gem_pv_out]
+
+def sommeerDailyData(dailyfilename,arrDates,strPeriod):
+	"""
+	Sommeer de daggegevens uit het bestand daggegevens_identifier.csv op basis van de array met data
+	De volgende gegevens moeten berekend en teruggegeven worden:
+	totaal,gem_temp,gem_pv_out,totaal_pv_out
+	"""
+	if strPeriod == "daily":
+		PeriodRecord = collections.namedtuple('PeriodRecord', 'timestamp, datetime, totaal, temp, pv_out, fout')
+	elif strPeriod == "weekly" or strPeriod == "monthly":
+		PeriodRecord = collections.namedtuple('PeriodRecord', 'datum, totaal, gem_temp, gem_pv_out, totaal_pv_out')
+	elif strPeriod == "yearly":
+		PeriodRecord = collections.namedtuple('PeriodRecord', 'jaar, maand, totaal, gem_temp, gem_pv_out, totaal_pv_out')
+	totaal = 0
+	gem_temp = 0
+	gem_pv_out = 0
+	totaal_pv_out = 0
+	i = 0
+	j = 0
+	
+	if os.path.exists(dailyfilename):
+		for loc in map(PeriodRecord._make, csv.reader(open(dailyfilename,"r"), delimiter=',')):
+			i = i + 1
+			for date in arrDates:
+				#if i > 1:
+				#	print "date / loc.datum: " + time.strftime("%Y%m%d", time.strptime(str(date), '%Y%m%d')) + " / " + time.strftime("%Y%m%d", time.strptime(str(loc.datum), '%Y%m%d'))
+				if strPeriod == "daily":
+					if i >= 2 and time.strftime("%Y%m%d", time.strptime(str(loc.datetime), '%Y-%m-%d %H:%M:%S')) == time.strftime("%Y%m%d", time.strptime(str(date), '%Y%m%d')):
+						# controle toevoegen of de datum in de array met data zit
+						totaal = loc.totaal
+						gem_temp = gem_temp + int(loc.temp)
+						gem_pv_out = gem_pv_out + int(loc.pv_out)
+						totaal_pv_out = totaal_pv_out + int(loc.pv_out)
+						j = j + 1
+				else:
+					if i >= 2 and time.strftime("%Y%m%d", time.strptime(str(loc.datum), '%Y%m%d')) == time.strftime("%Y%m%d", time.strptime(str(date), '%Y%m%d')):
+						# controle toevoegen of de datum in de array met data zit
+						totaal = loc.totaal
+						gem_temp = gem_temp + int(loc.gem_temp)
+						gem_pv_out = gem_pv_out + int(loc.gem_pv_out)
+						totaal_pv_out = totaal_pv_out + int(loc.totaal_pv_out)
+						j = j + 1
+		totaal = int(totaal)
+		gem_temp = gem_temp/j-1
+		gem_pv_out = gem_pv_out/j-1
+		#print 'Weektotaal: %i' % (totaal)
+		#print 'Week gemiddelde temperatuur: %i' % (gem_temp)
+		#print 'Week gemiddelde output: %i' % (gem_pv_out)
+		#print 'Week totaal output: %i' % (totaal_pv_out)
+	return [totaal,gem_temp,gem_pv_out,totaal_pv_out]
 
 def main():
 	#strOutputFileStats = strftime("%Y%m%d%H%M%S") + '_stats_' + strIdentifier + '.csv'
@@ -420,8 +487,8 @@ def main():
 	
 	saveStats(strInputDirectory +'/' + strOutputFileStats,'%s,%s,%s,%s,%s,%s' % (strMillis,strDateTime,strTotaal,strTemp,strGridPow,strFout))
 	saveDailyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileDag,strDateForFileName)
-	saveWeeklyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileWeek,strDateForFileName)
-	saveMonthlyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileMaand,strDateForFileName)
+	saveWeeklyData(strInputDirectory +'/' + strOutputFileDag,strInputDirectory +'/' + strOutputFileWeek,strDateForFileName)
+	saveMonthlyData(strInputDirectory +'/' + strOutputFileDag,strInputDirectory +'/' + strOutputFileMaand,strDateForFileName)
 	saveYearlyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileJaar,strDateForFileName)
 
 if __name__ == '__main__':
