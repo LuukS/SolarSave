@@ -33,6 +33,7 @@ strStats = ''
 strInputDirectory = ''
 strDateForFileName = ''
 tmeDateForFileName = time.time()
+blnDebug = False
 
 def processCSV(self,naam, fileobject):
 	myReader = csv.reader(fileobject, delimiter=';', quoting=csv.QUOTE_NONE)
@@ -141,25 +142,16 @@ def saveWeeklyData(dailyfilename,filename,strDate):
 	gem_pv_out = 0
 	totaal_pv_out = 0
 	sommatie = []
-	for intDate in daysInWeek:
-		print "Datum: " + intDate
-		strJaar = time.strftime("%Y", time.strptime(str(intDate), '%Y%m%d'))
-		strMaand = time.strftime("%m", time.strptime(str(intDate), '%Y%m%d'))
-		strDag = time.strftime("%d", time.strptime(str(intDate), '%Y%m%d'))		
-		strBestand = strInputDirectory +'/' + strJaar + strMaand + strDag + '_stats_' + strIdentifier + '.csv'
-		sommatie = sommeerDailyData(dailyfilename,daysInWeek,strPeriod)
-		# sommeer de gegevens niet uit de losse stats bestanden maar uit de daggegevens, deze worden namelijk al geupdate met de losse stats gegevens
-		# de for intDate hoeft dan niet meer, de data zitten in de array welke meegegeven wordt.
-		totaal = sommatie[0]
-		gem_temp = sommatie [1]
-		gem_pv_out = sommatie [2]
-		totaal_pv_out = sommatie [3]
+	sommatie = sommeerDailyData(dailyfilename,daysInWeek,strPeriod)
+	totaal = sommatie[0]
+	gem_temp = sommatie [1]
+	gem_pv_out = sommatie [2]
+	totaal_pv_out = sommatie [3]
 
 	if blnFileExists == False:
 		outputFile = open(filename, 'a')
 		outputFile.write('jaar,week,totaal,gem_temp,gem_pv_out,totaal_pv_out\n')
 		outputFile.write(str(strftime("%Y", tmeDateForFileName)) + ',' + str(intWeeknummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
-		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
 		outputFile.close()
 	else:
 		# Kijk in het bestaande bestand of de weekgegevens al bestaan, zo niet dan toevoegen, indien wel dan aanpassen
@@ -205,47 +197,95 @@ def saveMonthlyData(monthlyfilename,filename,strDate):
 
 	arrDaysInMonth = getDaysInMonth(strDate)
 	sommatie = sommeerDailyData(monthlyfilename,arrDaysInMonth,strPeriod)
-	print "Sommatie: " + str(sommatie)
+	totaal = sommatie[0]
+	gem_temp = sommatie [1]
+	gem_pv_out = sommatie [2]
+	totaal_pv_out = sommatie [3]
+	
 	blnFileExists = False
 	if os.path.exists(filename):
 		blnFileExists = True
 
-	if blnFileExists == False:
+	if blnFileExists == True:
+		# Kijk in het bestaande bestand of de maandgegevens al bestaan, zo niet dan toevoegen, indien wel dan aanpassen
+		with open(filename, "r") as f:
+			oldlines = f.readlines()
+			f.close()
+		i = 0
+		blnMaandgevonden = False
+		with open(filename, "w") as f:
+			for line in oldlines:
+				i = i + 1
+				if i > 1 and intJaar == int(line.split(',')[0]) and intMaandnummer == int(line.split(',')[1]):
+					f.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
+					blnMaandgevonden = True
+				else:
+					f.write(line)
+			if blnMaandgevonden == False:
+				f.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
+			f.close()
+
+	else:
 		outputFile = open(filename, 'a')
 		outputFile.write('jaar,maand,totaal,gem_temp,gem_pv_out,totaal_pv_out\n')
 		outputFile.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
-		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
-		outputFile.close()
-	else:
-		outputFile = open(filename, 'a')
-		outputFile.write(str(intJaar) + ',' + str(intMaandnummer) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		outputFile.close()
 
-def saveYearlyData(monthlyfilename,filename,strDate):
+def saveYearlyData(yearfilename,filename,strDate):
 	"""
 	Sla de jaargegevens op in het bestand jaargegevens_identifier.csv
 	Bepaal hiervoor de totalen van het jaar totnutoe uit de maand gegevens
 	De volgende gegevens moeten berekend worden:
-	jaar,totaal,gem_temp,gem_pv_out
+	jaar,totaal,gem_temp,gem_pv_out,totaal_pv_out
 	Doorloop hiervoor de maand files van het opgegeven jaar en bereken de gegevens voor
 	het jaar.
 	Open de jaargegevens en controleer of er niet al een record bestaat voor het jaar,
 	indien niet dan toevoegen, indien wel dan de gegevens aanpassen.
 	Tevens moet op basis van de datum bepaald worden welk jaar het is.
 	"""
+	strPeriod = "yearly"
+	intJaar = getJaar(strDate)
+	strBestand = ""
+	totaal = 0
+	gem_temp = 0
+	gem_pv_out = 0
+	totaal_pv_out = 0
+	sommatie = []
+
+	arrMonthsInYear = getMonthsInYear(strDate)
+	sommatie = sommeerMonthlyData(yearfilename,arrMonthsInYear)
+	totaal = sommatie[0]
+	gem_temp = sommatie [1]
+	gem_pv_out = sommatie [2]
+	totaal_pv_out = sommatie [3]
+	
 	blnFileExists = False
 	if os.path.exists(filename):
 		blnFileExists = True
 
 	if blnFileExists == False:
 		outputFile = open(filename, 'a')
-		outputFile.write('jaar,totaal,gem_temp,gem_pv_out\n')
-		#outputFile.write(strDate + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + '\n')
+		outputFile.write('jaar,totaal,gem_temp,gem_pv_out,totaal_pv_out\n')
+		outputFile.write(str(intJaar) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
 		outputFile.close()
 	else:
-		outputFile = open(filename, 'a')
-		outputFile.write('test\n')
-		outputFile.close()
+		# Kijk in het bestaande bestand of de jaargegevens al bestaan, zo niet dan toevoegen, indien wel dan aanpassen
+		with open(filename, "r") as f:
+			oldlines = f.readlines()
+			f.close()
+		i = 0
+		blnJaargevonden = False
+		with open(filename, "w") as f:
+			for line in oldlines:
+				i = i + 1
+				if i > 1 and intJaar == int(line.split(',')[0]):
+					f.write(str(intJaar) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
+					blnJaargevonden = True
+				else:
+					f.write(line)
+			if blnJaargevonden == False:
+				f.write(str(intJaar) + ',' + str(totaal) + ',' + str(gem_temp) + ',' + str(gem_pv_out) + ',' + str(totaal_pv_out) + '\n')
+			f.close()
 
 def getWeekNummer(strDate):
 	"""
@@ -359,6 +399,14 @@ def getDaysInMonth(strDate):
 		
 	return arrDagenInMaand
 
+def getMonthsInYear(strDate):
+	"""
+	Bepaal welke maanden in het jaar zitten op basis van de (als string doorgegeven) datum
+	"""
+	strJaar = time.strftime("%Y", time.strptime(strDate, '%Y%m%d'))
+	arrMonthsInYear = [strJaar + "01",strJaar + "02",strJaar + "03",strJaar + "04",strJaar + "05",strJaar + "06",strJaar + "07",strJaar + "08",strJaar + "09",strJaar + "10",strJaar + "11",strJaar + "12"]
+	return arrMonthsInYear
+	
 def isSchrikkeljaar(strDate):
 	"""
 	Bepaal of een jaar een schrikkeljaar is
@@ -458,6 +506,39 @@ def sommeerDailyData(dailyfilename,arrDates,strPeriod):
 		#print 'Week totaal output: %i' % (totaal_pv_out)
 	return [totaal,gem_temp,gem_pv_out,totaal_pv_out]
 
+def sommeerMonthlyData(monthfilename,arrMonths):
+	"""
+	Sommeer de daggegevens uit het bestand daggegevens_identifier.csv op basis van de array met data
+	De volgende gegevens moeten berekend en teruggegeven worden:
+	totaal,gem_temp,gem_pv_out,totaal_pv_out
+	"""
+	PeriodRecord = collections.namedtuple('PeriodRecord', 'jaar, maand, totaal, gem_temp, gem_pv_out, totaal_pv_out')
+	totaal = 0
+	gem_temp = 0
+	gem_pv_out = 0
+	totaal_pv_out = 0
+	i = 0
+	j = 0
+	
+	if os.path.exists(monthfilename):
+		for loc in map(PeriodRecord._make, csv.reader(open(monthfilename,"r"), delimiter=',')):
+			i = i + 1
+			for month in arrMonths:
+				if i >= 2 and str(loc.jaar) == str(month[0:4]) and str(loc.maand) == str(int(month[4:6])):
+					totaal = loc.totaal
+					gem_temp = gem_temp + int(loc.gem_temp)
+					gem_pv_out = gem_pv_out + int(loc.totaal_pv_out)
+					totaal_pv_out = totaal_pv_out + int(loc.totaal_pv_out)
+					j = j + 1
+		totaal = int(totaal)
+		gem_temp = gem_temp/j-1
+		gem_pv_out = gem_pv_out/j-1
+		#print 'Jaartotaal: %i' % (totaal)
+		#print 'Jaar gemiddelde temperatuur: %i' % (gem_temp)
+		#print 'Jaar gemiddelde output: %i' % (gem_pv_out)
+		#print 'Jaar totaal output: %i' % (totaal_pv_out)
+	return [totaal,gem_temp,gem_pv_out,totaal_pv_out]
+
 def main():
 	#strOutputFileStats = strftime("%Y%m%d%H%M%S") + '_stats_' + strIdentifier + '.csv'
 	#strOutputFileStats = strftime("%Y%m%d") + '_stats_' + strIdentifier + '.csv'
@@ -489,11 +570,11 @@ def main():
 	saveDailyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileDag,strDateForFileName)
 	saveWeeklyData(strInputDirectory +'/' + strOutputFileDag,strInputDirectory +'/' + strOutputFileWeek,strDateForFileName)
 	saveMonthlyData(strInputDirectory +'/' + strOutputFileDag,strInputDirectory +'/' + strOutputFileMaand,strDateForFileName)
-	saveYearlyData(strInputDirectory +'/' + strOutputFileStats,strInputDirectory +'/' + strOutputFileJaar,strDateForFileName)
+	saveYearlyData(strInputDirectory +'/' + strOutputFileMaand,strInputDirectory +'/' + strOutputFileJaar,strDateForFileName)
 
 if __name__ == '__main__':
 	args = sys.argv[1:]
-	if len(args) == 3:
+	if len(args) >= 3:
 		strIdentifier = args[0]
 		strInputDirectory = args[1]
 		strStats = args[2]
@@ -501,20 +582,30 @@ if __name__ == '__main__':
 		tmeDateForFileName = time.strptime(strDateForFileName, '%Y%m%d')
 		print "Doorgekregen jaar: %s" % (strftime("%Y", tmeDateForFileName))
 		print "Schrikkeljaar: %s" % (isSchrikkeljaar(strDateForFileName))
+		if len(args) == 4:
+			blnDebug = args[3]
+			print "Debugmodus: " + blnDebug
 
 		if strStats.count(",") != 5:
 			print "Geen geldige argumenten opgegeven voor de op te slaan gegevens."
 			print "In totaal moeten zes komma gescheiden waarden opgegeven worden."
+			print "Optioneel kan een vierde parameter opgegeven worden om in debug"
+			print "modus te starten."
 			print 'Bijvoorbeeld: SolarSaver.py "soladin1" "/data/solar" "1371303031513,2013-06-15 15:30:32,120827,66,485,2048"'
+			print 'of in debug modus:'
+			print 'SolarSaver.py "soladin1" "/data/solar" "1371303031513,2013-06-15 15:30:32,120827,66,485,2048" true'
 			sys.exit()
 	else:
 		print
 		print 'Geen argumenten opgegeven, dit script heeft drie'
-		print 'argument nodig. Dit zijn de identifier, de directory'
+		print 'argumenten nodig. Dit zijn de identifier, de directory'
 		print 'waarin de gegevens moeten worden opgeslagen en de'
 		print 'gegevens zelf (timestamp, datetime, totaal, temp, grid_pow, fout).'
+		print "Optioneel kan een vierde parameter opgegeven worden om in debug"
+		print "modus te starten."
 		print 'Bijvoorbeeld: SolarSaver.py "soladin1" "/data/solar" "1371303031513,2013-06-15 15:30:32,120827,66,485,2048"'
-
+		print 'of in debug modus:'
+		print 'SolarSaver.py "soladin1" "/data/solar" "1371303031513,2013-06-15 15:30:32,120827,66,485,2048" true'
 		sys.exit()
 
 	main()
