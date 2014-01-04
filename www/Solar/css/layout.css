@@ -1,0 +1,147 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html, body {
+	height: 100%;
+}
+
+body {
+	background-color: #ccc;
+	color: black;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 15px;
+    overflow-y: scroll;
+}
+
+td {
+	padding: 2px 5px 1px 7px;
+}
+
+ul {
+    margin: 10px 20px;
+}
+
+.clear {
+    clear: both;
+}
+
+#wrapper {
+	width: 800px;
+	background-color: white;
+	margin: 0 auto;
+	padding-bottom: 5px;        
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+        
+}
+
+#header {
+	height: 50px;
+	width: 800px;
+	padding-top: 10px;
+	text-align: center;
+}
+
+#header h1 {
+    font-family: Verdana;
+    font-size: 2.1em;
+}
+
+#notify {
+	width: 800px;
+}
+
+#notify .error {
+	background-color: #FFAAAA;
+	border: 1px solid red;
+	color: #AA3333;
+	font-weight: bold;
+	padding: 5px;
+	text-align: center;
+	width: 788px;
+}
+
+#intro a {
+    color: #333;
+}
+
+#footer {
+    font-size: 10px;
+    color: #666;
+    text-align: right;
+    padding: 4px 7px;
+}
+
+#footer a {
+    color: #333;
+    text-decoration: none;
+    /*font-weight: bold;*/
+}
+
+#intro {
+	width: 780px;
+	padding: 10px;
+}
+
+#tab_t_current {
+	/*padding: 10px 25px 15px;*/
+}
+
+#tab_t_current #cur_intro {
+    width: 800px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 4px;
+}
+
+#tab_t_current div {
+    float: left;
+}
+
+#tab_t_current #stats_solar {
+    width: 500px;
+}
+
+#tab_t_current #stats_resol {
+    width: 299px;
+}
+#tab_t_current #stats_solar table {
+    width: 500px;
+}
+#tab_t_current #stats_resol table {
+    width: 299px;
+}
+
+#tab_t_current .seperator {
+    float: left;
+    width: 1px;
+    background-color: #7F7F7F;
+    height: 200px;
+    margin-top: 15px;
+}
+
+ .add_today {
+    padding-left: 5px;
+    font-size: 13px;
+    color: #3B7F2B;
+}
+
+.period_nav {
+    width: 250px;
+    margin: 0 auto;
+}
+
+.period_nav td {
+    text-align: center;
+    width: 70px;
+    padding: 0;
+    font-size: 22px;
+}
+
+.period_nav td a {
+    text-decoration: none;
+}

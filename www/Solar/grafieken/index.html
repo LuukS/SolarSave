@@ -1,0 +1,208 @@
+<html>
+<head>
+<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="http://code.highcharts.com/highcharts.js"></script>-->
+<script src="./jquery.min.js"></script>
+<script src="./highcharts.js"></script>
+<script>
+
+
+Highcharts.setOptions({
+    global: {
+        useUTC: false   // otherwise UTC, we want local time
+    }
+});
+
+// column indexes
+var TIMEMILLIS = 0;
+var TEMP = 9;
+var PAC = 4;
+var ETODAY = 7;
+
+var DAYMILLISECONDS = 24*60*60*1000;
+
+function date2ymd(date) {
+    var d = date.getDate();
+    var m = date.getMonth() + 1;
+    var y = date.getFullYear();
+    return '' + y + (m<=9 ? '0' + m : m)  + (d <= 9 ? '0' + d : d);
+}
+function ymd2date(ymd){
+    var y = ymd.slice(0,4);
+    var m = ymd.slice(5,6);
+    var d = ymd.slice(6,8);
+    var date = new Date();
+    date.setFullYear(y);
+    date.setMonth(m-1);
+    date.setDate(d);
+    return date;
+}
+
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+$(function () {
+    var ymd = date2ymd(new Date());
+    $('#ymd').html(ymd);
+    if(getParameterByName('csv')){
+        csvurl = getParameterByName('csv');
+    }
+
+    $('#prev').click(function(){
+        var date = ymd2date($('#ymd').html());
+        date = new Date(date.getTime()-DAYMILLISECONDS);
+        $('#ymd').html(date2ymd(date));
+        ymd = $('#ymd').html();
+        getData();
+    });
+    $('#next').click(function(){
+        var date = ymd2date($('#ymd').html());
+        date = new Date(date.getTime()+DAYMILLISECONDS);
+        $('#ymd').html(date2ymd(date));
+        ymd = $('#ymd').html();
+        getData();
+    });
+
+    function getData(){
+        var csvurl = './inverter_1204DN0147_'+ymd+'.csv';
+        var csvurl = './csv/'+ymd+'.csv';
+        $.ajax({
+            type: 'GET',
+            url: csvurl,
+            dataType: 'text',
+            success: function(datacsv) {
+                var lines = datacsv.split('\n');
+                var datetime = [];
+                var temp = {
+                    name: 'temp',
+                    data: [],
+                    type: 'line',
+                    marker: {
+                        symbol: 'circle',
+                        radius: 2,
+                        enabled: false,
+                        states: { hover: { enabled: true } }
+                    },
+                    color: '#fd8d3c',
+                    lineWidth: 0.5
+                };
+                var pac = {
+                    name: 'pac',
+                    yAxis: 2,
+                    data: [],
+                    type: 'line',
+                    marker: {
+                        symbol: 'circle',
+                        radius: 2,
+                        enabled: false,
+                        states: { hover: { enabled: true } }
+                    },
+                    color: '#339933',
+                    lineWidth: 0.5
+                };
+                var etoday = {
+                    name: 'etoday',
+                    yAxis: 1,
+                    data: [],
+                    type: 'area',
+                    marker: {
+                        enabled: false,
+                        states: { hover: { enabled: true } }
+                    },
+                    color: '#ccff66',
+                    tooltip: {
+                                valueDecimals: 3,
+                                //valuePrefix: '$',
+                                valueSuffix: ' kWh'
+                    }
+                };
+                // Iterate over the lines and add categories or series
+                var etodaycurrent = 0;
+                $.each(lines, function(lineNo, line) {
+                    var items = line.split(',');
+
+                    // header line containes categories
+                    if (lineNo == 0 || items.length<2) {
+                    //  $.each(items, function(itemNo, item) {
+                    //      if (itemNo > 0) options.xAxis.categories.push(item);
+                    //  });
+                    }
+                    else {
+                        var timemillis =  1000*parseInt(items[TIMEMILLIS]);
+                        timemillis =  parseInt(items[TIMEMILLIS]);
+                        temp.data.push( [ timemillis, parseFloat(items[TEMP])] );
+                        etodaycurrent = parseFloat(items[ETODAY]);
+                        etoday.data.push( [ timemillis, etodaycurrent ] );
+                        pac.data.push( [ timemillis,  parseFloat(items[PAC])] );
+                    }
+                });
+                series = [];
+                series.push(etoday);
+                series.push(pac);
+                series.push(temp);
+                // Create the chart
+                chart(series, etodaycurrent);
+            }
+        });
+    }
+    getData();
+
+    function chart(seriesdata, etoday){
+        var options = {
+            title: {
+                text: (''+etoday).slice(0,6) + ' kWh'
+            },
+            subtitle: {
+                text: 'hensch: 1.4 kWp'
+            },
+            chart: {},
+            yAxis: [{ //--- Primary yAxis
+                title: {
+                    text: 'Temperature'
+                },
+                max: 80
+            }, { //--- Secondary yAxis
+                title: {
+                    text: 'Etoday(kWh)',
+                },
+                opposite: true,
+                max: 1400
+            }, { //--- Tertiary yAxis
+                title: {
+                    text: 'PAC',
+                },
+                max: 1400
+            }],
+            xAxis: {
+                type : 'datetime'
+            } ,
+            series : seriesdata
+        }
+        $('#container').highcharts(options);
+    }
+
+});
+
+</script>
+</head>
+<body>
+
+<div id="container" style="width:100%; height:500px;"></div>
+
+<p>
+<a href="#" id="prev"> &lt; </a><span id="ymd"></span><a href="#" id="next"> &gt; </a>
+</p>
+<p>
+<a href="/Solar">Terug naar het dag overzicht</a>
+</p>
+
+<p>
+Zie: <a href="http://docs.highcharts.com/#home">docs</a>
+ en <a href="http://api.highcharts.com/highcharts">api</a>
+</p>
+</body>
+</html>
